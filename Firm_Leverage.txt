@@ -1,0 +1,65 @@
+clear all
+cd
+import excel "C:\Users\EliteBook\Desktop\Econometricx\New_data.xlsx", sheet("Results") firstrow
+drop AM AS BD BJ
+reshape long ROE TotaldebtGBP rorc TotalequityGBP EBITGBP ROA TotalassetsGBP Assetbasedratio TangibilityGBP, i(BvDIDnumber) j(Year) string
+encode BvDIDnumber, generate(ID)
+drop BvDIDnumber
+destring ROE TotaldebtGBP rorc TotalequityGBP EBITGBP ROA TotalassetsGBP Assetbasedratio TangibilityGBP, replace
+ren *,lower
+hist roe 
+hist totaldebtgbp
+hist rorc 
+hist totalequitygbp
+hist ebitgbp
+hist roa
+hist totalassetsgbp
+hist assetbasedratio 
+hist tangibilitygbp 
+gen ROE = log(roe)
+gen TOD = log(totaldebtgbp)
+gen RORC = log(rorc)
+gen TOE = log(totalequitygbp)
+gen EBIT =log(ebitgbp)
+gen ROA = log(roa)
+gen TOA = log(totalassetsgbp)
+gen ABR = log(assetbasedratio)
+gen TAN = log(tangibilitygbp)
+hist ROE 
+hist TOD
+hist RORC 
+hist TOE
+hist EBIT
+hist ROA
+hist TOA
+hist ABR 
+hist TAN
+gen Leverage= TOD/TOE
+destring year, replace
+generate brexit_date = date("2020-01-30", "YMD")
+format brexit_date %td
+gen treated = 0
+replace treated = 1 if country == "United Kingdom"
+gen Post_brexit = 0
+replace Post_brexit = 1 if year >= 2020
+drop if ROE==.
+drop if EBIT==.
+corr RORC ROA ABR EBIT treated Post_brexit
+regress Leverage RORC ROA ABR EBIT treated Post_brexit
+sum
+sort country year
+by country year: summarize
+xtset id year
+xtreg Leverage RORC ROA ABR EBIT treated Post_brexit, i(id) re
+estimates store re_model
+xtreg Leverage RORC ROA ABR EBIT treated Post_brexit, i(id) fe
+estimates store fe_model
+hausman re_model fe_model
+ivreg2 Leverage (ROA = TOA TAN) ABR RORC EBIT treated Post_brexit
+reg Leverage Post_brexit treated Post_brexit#treated ROA ABR EBIT, robust cluster(id)
+diff Leverage, t(treated) p(Post_brexit) cov(ROA ABR RORC EBIT) cluster(id)
+logit treated ROA ABR RORC EBIT
+predict pscore, xb
+tabstat ROA ABR RORC EBIT, by(treated) statistics(mean)
+
+save new_data.dta, replace

@@ -1,0 +1,257 @@
+---
+title: "Data Science"
+author: '500681622'
+date: "2024-01-05"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+# Task_1
+```{r}
+options(repos = list(CRAN = "https://cloud.r-project.org"))
+
+# installing required packages
+install.packages("rpart")
+install.packages("DBI")
+install.packages("RMySQL")
+library(rpart)
+library(DBI)
+library(RMySQL)
+USER <- 'root'
+PASSWORD <- '@G123K321MyA'
+HOST <- 'localhost'
+DBNAME <- 'world'
+
+db <- dbConnect(MySQL(), user= USER, password= PASSWORD, host= HOST, dbname= DBNAME, port=3306)
+result <- dbGetQuery(db, statement="select * from world.customerchurn")
+dbDisconnect(db)
+head(result)
+
+#data_cleaning
+
+install.packages("dplyr")
+library(dplyr)
+# Remove CUSTOMERID column
+result <- select(result, -CUSTOMERID)
+
+# Convert 'COLLEGE' to a binary format (0 = No, 1 = Yes)
+result$COLLEGE <- ifelse(result$COLLEGE == "zero", 0, 1)
+head(result)
+
+#making_Decision_Tree
+
+# Convert categorical variables to factors
+categorical_columns <- c('COLLEGE', 'REPORTED_SATISFACTION', 'REPORTED_USAGE_LEVEL', 'CONSIDERING_CHANGE_OF_PLAN', 'LEAVE')
+result[categorical_columns] <- lapply(result[categorical_columns], as.factor)
+set.seed(123)  # For reproducibility
+# Split data set into training and testing (adjust the proportion as needed)
+install.packages("caret")
+library(caret)
+splitIndex <- createDataPartition(result$LEAVE, p = 0.8, list = FALSE)
+train_result <- result[splitIndex, ]
+test_result <- result[-splitIndex, ] 
+# Create the model
+install.packages("rpart.plot")
+library(rpart.plot)
+tree_model <- rpart(LEAVE ~ ., data = train_result, method = "class", maxdepth = 6, minbucket = 5, cp = 0.001)
+rpart.plot(tree_model,nn.cex=0.8, box.palette = c("yellow", "green"),fallen.leaves = TRUE, extra=104, type =4)
+# model_evaluation
+# Predict on test data
+predictions <- predict(tree_model, test_result, type = "class") 
+#Confusion_Matrix
+tree_model_predictions <- predict(tree_model, test_result, type = "class")
+conf_matrix_tree_model <- confusionMatrix(tree_model_predictions, as.factor(test_result$LEAVE))
+accuracy_tree_model <- conf_matrix_tree_model$overall['Accuracy']
+print(paste("Decision Tree Model Accuracy:", accuracy_tree_model))
+```
+
+# Interpretation_1
+Installing and loading the required packages for database access (DBI, RMySQL), data manipulation (dplyr), and decision tree building (rpart) is the first step in completing the task. After there, it uses credentials to create a database connection and accesses world.customerchurn table from MySQL. The database connection is closed when the connection has been made and the data has been obtained, and the head function is used to show the first few rows of the data.
+Data cleansing is the next stage. Since the ID column was useless for prediction, it was eliminated in this stage. Additionally, the category variable of COLLEGE was changed to a binary format so that the model can analyse it more easily.The decision tree model is created by using code once the data has been cleaned. It begins by converting categorical variables, which is required for the R modelling function to handle them appropriately. In order to guarantee repeatability of the results—which is crucial for scientific and diagnostic purposes—it establishes a seed for random number creation. The createDataPartition function from the caret package is then used to divide the dataset into a training set and a test set, with 80% of the data being utilised for model training.Using the rpart function, the training data is converted into a decision tree model. The rpart.plot package's prp function is used to visualise the model. After that, the code uses the confusionMatrix function to create a confusion matrix and makes predictions on the test dataset in order to evaluate the model. Ultimately, the model's accuracy is taken from the confusion matrix and printed. The decision tree model's accuracy as a whole is around 70%, meaning that 70% of the time, the model accurately predicts whether a client will stay or leave.
+
+# Task_2
+```{r}
+test_result[categorical_columns] <- lapply(test_result[categorical_columns], as.factor)
+logistic_model <- glm(LEAVE ~ ., data = train_result, family = "binomial")
+summary(logistic_model)
+
+# Predict on test data using logistic regression model
+logistic_prediction <- predict(logistic_model, test_result, type="response")
+logistic_prediction_class <- ifelse(logistic_prediction > 0.5, "1", "0")
+
+actual_values_factor <- factor(test_result$LEAVE, levels = c("0", "1"))
+logistic_prediction_factor <- factor(logistic_prediction_class, levels = c("0", "1"))
+
+# Confusion Matrix
+conf_matrix_logistic_model <- confusionMatrix(logistic_prediction_factor, actual_values_factor)
+print(conf_matrix_logistic_model)
+accuracy_logistic <- conf_matrix_logistic_model$overall['Accuracy']
+print(paste("Logistic Regression Model Accuracy:", accuracy_logistic))
+
+options(repos = c(CRAN = "https://cloud.r-project.org"))
+
+install.packages("pROC")
+library(pROC)
+roc_curve <- roc(test_result$LEAVE, logistic_prediction)
+auc_value <- auc(roc_curve)
+#Plot ROC Curve
+plot(roc_curve, main="ROC Curve for Logistic Regression", col="skyblue", lwd = 2)
+text(0.8, 0.2, paste("AUC", round(auc_value, 3)), cex= 0.8, col="green")
+legend("bottomright", legend = c("Logistic Regression"), col=c("blue"), lwd = 2)
+cat("AUC for Logistic Regression", round(auc_value, 3),"\n")
+```
+# Interpretation_2
+First, Task 2 involved data preparation for logistic regression. All categorical variables in the test dataset were transformed to factors since logistic regression requires numerical input. This way, R can handle the variables accurately in the model.A logistic regression model was fitted to the train_result dataset, which contained the relevant customer features as independent variables, using the glm function with the binomial family option.The customer's decision to stay or go was the dependent variable.Next, predictions were made using the model on the test data.A binary prediction based on a 0.5 threshold was computed using the expected probabilities. Consumers were categorised as likely to go if their estimated likelihood was more than 0.5 and as likely to stay if it was less than 0.5.An evaluation confusion matrix was created in order to assess the prediction performance of the model. Understanding the model's advantages and disadvantages in terms of forecasting customers leaving is made easier with the help of this matrix, which offered a clear picture of the true positives, true negatives, false positives, and false negatives.ROC analysis, a method for assessing a binary classifier's prediction ability, was employed for a more thorough examination. The AUC, a comprehensive statistic that evaluates the model's ability to discriminate between consumers who will stay and those who leave regardless of the decision threshold, was calculated using the pROC package to construct the ROC curve.A modest predictive power was suggested by the AUC value, which was around 0.677. 
+
+# Task_3
+
+```{r}
+#KNN_Model
+# Build the kNN model
+knn_model <- train(
+  form = LEAVE ~ .,     # Train model to predict LEAVE based on other variables
+  data = train_result,    # Use train_data
+  method = 'knn'        # Use knn as the model
+)
+
+# What is the result of the train function?
+print(knn_model)
+
+# Plot the model
+plot(knn_model)
+# Predict on the test data
+predicted_classes <- predict(knn_model, newdata = test_result, type = "raw")
+
+# Obtain class probabilities manually
+probabilities <- as.numeric(attr(predicted_classes, "prob"))
+library(ggplot2)
+library(caret)
+# Predict on the test data
+predicted_classes <- predict(knn_model, newdata = test_result, type = "raw")
+
+# Combine test data and predicted classes
+combined_data <- cbind(test_result, Predicted = predicted_classes)
+
+# Scatter plot with colors indicating true classes
+ggplot(combined_data, aes(x = INCOME, y = OVERAGE, color = LEAVE)) +
+  geom_point() +
+  labs(title = "Scatter Plot with True Classes") +
+  theme_minimal()
+
+# Scatter plot with colors indicating predicted classes
+ggplot(combined_data, aes(x = INCOME, y = OVERAGE, color = Predicted)) +
+  geom_point() +
+  labs(title = "Scatter Plot with Predicted Classes") +
+  theme_minimal()
+```
+```{r}
+# Calculate the confusion matrix
+conf_matrix_knn <- confusionMatrix(data = predicted_classes, reference = test_result$LEAVE)
+
+# Print the confusion matrix
+print(conf_matrix_knn)
+
+# Print the accuracy
+accuracy <- conf_matrix_knn$overall['Accuracy']
+print(accuracy)
+```
+
+```{r}
+library(caret)
+
+# Define the control using a cross-validation approach
+train_control <- trainControl(method="cv", number=10)
+
+# Train the model
+grid <- expand.grid(.k=1:20)  # Trying different k values
+knn_tune <- train(LEAVE ~ ., data=train_result, method="knn", trControl=train_control, tuneGrid=grid)
+
+# Print the best tuning parameter
+print(knn_tune$bestTune)
+
+```
+
+```{r}
+# Normalizing the data
+preProcValues <- preProcess(train_result, method = c("center", "scale"))
+train_normalized <- predict(preProcValues, train_result)
+test_normalized <- predict(preProcValues, test_result)
+```
+
+
+
+```{r}
+# Predictions and Evaluation for each model
+predictions_knn <- predict(knn_tune, test_normalized)
+conf_matrix_knn <- confusionMatrix(predictions_knn, test_result$LEAVE)
+print(conf_matrix_knn)
+```
+# Interpretation_3
+To predict the LEAVE outcome, a kNN model was constructed using the train function from the caret package and all of the variables from the train_result dataset. The training results, which included information on the model's performance over a range of values of k, the number of neighbours taken into consideration, would have been shown by the print(knn_model) command.
+The model's performance was then visualised using the plot(knn_model) command, most likely illustrating how the accuracy of the model varies with varying numbers of neighbours.The trained kNN model was used to make predictions on the test dataset, and ggplot2 was used to create a scatter plot that displayed the true classes versus the two important variables, OVERAGE and INCOME. The anticipated classes were plotted against these factors in another scatter plot that was made.The model's performance was assessed by calculating the confusion matrix, which revealed the proportion of accurate and inaccurate predictions. One performance statistic for the classifier was obtained by extracting the model's accuracy from the confusion matrix.By utilising cross-validation with ten folds to adjust the number of neighbours (k), an additional optimisation of the kNN model was tried. Over a range of 1 to 20, the trainControl and expand.grid functions were utilised to methodically look for the best k value.Normalisation of the data was done, which is important because kNN relies on distance computations. Normalisation guarantees that every feature makes a proportionate contribution to the total distance computed.The maximum accuracy found during the tuning procedure led to the conclusion that k=9 was the ideal number of neighbours. After that, a fresh confusion matrix was printed out and this optimised kNN model was reevaluated.The kNN model with k=9 neighbours has an accuracy of around 58.91%, which is an increase over the baseline 'No Information Rate' of 50.74%, according to the findings supplied. This suggests that, despite its low performance, the model has picked up patterns from the data that may be used to anticipate client leave.The above scatter plots show how consumers are distributed according to INCOME and OVERAGE, as well as how these characteristics connect to the actual and anticipated churn statuses. The charts make it easier to see where the model is forecasting results accurately and where it could be misclassifying clients.
+The final graphic demonstrates an increasing trend in accuracy from 5 to 9 neighbours, indicating that the model's predictions are improved to some extent when a larger local neighbourhood is taken into account. The model's sensitivity to the k parameter and any potential trade-offs between an excessively restricted or vast neighbourhood are shown in this graph.
+
+# Task_4
+```{r}
+# Load necessary library
+library(stats)
+
+# Assuming 'result' is your dataset
+# Standardize the data
+result_scaled <- scale(result[, sapply(result, is.numeric)])
+
+# Perform K-means clustering
+
+set.seed(123) 
+kmeans_result <- kmeans(result_scaled, centers = 3, nstart = 25)
+result$cluster <- as.factor(kmeans_result$cluster)
+
+# Summary of clusters
+print(table(result$cluster))
+cluster1 <- subset(result, cluster == 1)
+summary(cluster1)
+kmeans_result <- kmeans(result_scaled, centers = 3, nstart = 25)
+
+# Extract cluster centroids
+centroids <- kmeans_result$centers
+
+# View centroids
+print(centroids)
+```
+# Interpretation_4
+The normalised dataset, which contained a range of customer variables like income, overage fees, and handset costs, was subjected to the k-means algorithm. To guarantee that every characteristic contributed equally to the distance computations utilised in the clustering procedure, the data was standardised. To provide a solid answer, the algorithm was run numerous times with a total of three clusters defined.One natural grouping stood out in particular once the clusters' properties were examined. This group, which I will call "Cluster 1," was made up of consumers who had monthly long-duration conversations and lower-than-average overage charges, but they also had higher-than-average earnings and handset costs.
+In business terms, this cluster denotes a subset of clients who are probably wealthier and purchase more costly phones, but who also use the service sparingly to avoid incurring exorbitant fees.
+Because this group is ready to spend money on high-end phones, which may indicate a penchant for high-quality goods or services, BangorTelco may find value in this market sector. Their modest expenditure and lesser overage may also indicate a consistent consumption habit free from unforeseen expenses. This particular client demographic may exhibit a lower sensitivity to price fluctuations, yet they may be drawn to loyalty programmes or premium service offers that prioritise exclusivity and quality.
+
+
+```{r}
+saveRDS(tree_model, "C:/Users/sohai/Documents/Data Science/tree_model.rds")
+saveRDS(logistic_model, "C:/Users/sohai/Documents/Data Science/logistic_model.rds")
+saveRDS(knn_model, "C:/Users/sohai/Documents/Data Science/knn_model.rds")
+```
+
+```{r}
+# Define the path to the directory where you want to save the CSV file
+# Make sure to replace this with your actual desired path
+filepath <- "C:/Users/sohai/Documents/Data Science/result.csv"
+
+# Create the directory if it doesn't exist
+dir.create(dirname(filepath), recursive = TRUE, showWarnings = FALSE)
+
+# Use tryCatch to handle any errors during file writing
+tryCatch({
+  write.csv(result, file = filepath, row.names = FALSE)
+  message("Dataset exported successfully to ", filepath)
+}, error = function(e) {
+  message("An error occurred while trying to write the file: ", e$message)
+})
+```
+
+```{r}
+#install.packages("tinytex")
+#tinytex::install_tinytex()
+#tinytex::tlmgr_update()
+```
+
+

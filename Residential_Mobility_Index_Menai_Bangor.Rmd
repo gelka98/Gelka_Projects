@@ -1,0 +1,113 @@
+---
+title: "Coding for Business"
+author: '500681622'
+date: "2023-11-26"
+output:
+  word_document:
+    toc: yes
+    toc_depth: '2'
+  html_document:
+    toc: yes
+    toc_depth: 2
+  pdf_document:
+    toc: yes
+    toc_depth: 2
+---
+```{r setup, include=FALSE}
+options(repos = c(CRAN = "https://cran.r-project.org"))
+
+```
+
+```{r}
+data <- read.csv("hh_churn_lsoa11_2023.csv")
+data
+head(data)
+```
+##Task1
+The first task is to download and import a dataset that estimates residential population churn in the United Kingdom from 1997 to 2023. The dataset tries to reflect the fraction of households that have changed throughout the course of this time period. The estimates are created by integrating administrative and consumer data, such as electoral and consumer registries, as well as land registry house sale data.The dataset utilised in Task 1 provides a unique and extensive view of residential population trends in the United Kingdom. The dataset's primary features are as follows:
+Churn Analysis: The dataset is concerned with calculating the "churn" of the residential population. This refers to the change in the proportion of households over time. The time period covered ranges from 1997 to 2023.
+Sources of information: The estimates are created by connecting several sorts of data, including administrative sources like electoral registers, consumer registers, and data from land registry house transactions. This multi-source approach increases the dataset's richness and provides for a more comprehensive understanding of residential mobility.
+Granularity and Temporal Detail: The dataset offers insights into a local geographic area, allowing researchers to investigate annual fluctuations in neighbourhood change. This granularity is especially useful since it allows for a more in-depth investigation of local-level dynamics.
+One important feature is the ability to focus on yearly data rather than relying simply on decadal census data. Researchers may now study trends and changes on an annual basis, providing a more dynamic and nuanced knowledge of population dynamics.
+Considerations for Data Quality: A note is supplied regarding the steady degradation of the coverage and completeness of the underlying linked consumer register. This openness about potential limits is critical for consumers to understand when interpreting and analysing data.
+To sum up Task 1 entails working with a dataset that provides a deep and thorough view of residential population churn in the United Kingdom, allowing for sophisticated analysis of yearly changes at the local level. Researchers can use this dataset to learn about population dynamics and neighbourhood transformations during a given time period.
+By using the above code, the data set was imported in Rstudio. 
+
+```{r}
+menai_data <- data[data$area == "W01000092", ]
+menai_data
+years_between_0.5_and_0.8 <- c()
+for (col in names(menai_data)[-1]) {  # Exclude the first column "area"
+  year <- as.integer(sub("^chn", "", col))
+  year_data <- menai_data[[col]]
+  if (any(year_data > 0.5 & year_data < 0.8)) {
+    years_between_0.5_and_0.8 <- c(years_between_0.5_and_0.8, year)
+  }
+}
+result_df <- data.frame(Year = years_between_0.5_and_0.8)
+print(result_df)
+
+```
+##Task2
+In the second task the above code was used to see in which years Bangor area index was higher than 0.5 and lower than 0.8. The results are shown as above.
+```{r}
+data$AverageIndex <- rowMeans(data[, -1])
+data$Category <- cut(data$AverageIndex, breaks = c(-Inf, 0.2, 0.5, Inf), labels = c("Low", "Medium", "High"), include.lowest = TRUE)
+
+# Create a new data frame with only the desired columns
+new_data <- data[, c("AverageIndex", "Category")]
+print(new_data)
+```
+##Task3
+Average Residential Mobility Index: The first column, AverageIndex, is designed to compute the average Residential Mobility Index for each region. This is accomplished by employing the rowMeans function, which computes the mean for each row while taking into account columns beginning with "chn" (presumably reflecting data from 1997 to 2022).
+Classification as "Low," "Medium," or "High":
+The second column, titled Category, is added to classify each region based on its average Residential Mobility Index.
+Regions are divided into three types:
+"Low" indicates that the average index value is less than or equal to 0.2.
+"Medium" means that the average index value is greater than 0.2 but less than or equal to 0.5.
+"High" means that the average index value is more than 0.5.
+The dataset is augmented with additional information by adding these two columns, which improves interpretation of the average mobility index for each region. The categorization also makes it easier to separate regions into different mobility levels, allowing for simpler analysis and visualisations based on these parameters. Researchers and analysts can now readily investigate and understand trends in residential mobility in various regions during a specific time period.
+
+```{r}
+
+unlink("/home/people/glk22nhj/R/x86_64-pc-linux-gnu-library/4.2/00LOCK-ggplot2", recursive = TRUE)
+
+#install.packages("ggplot2")
+library(ggplot2)
+# Line Chart: Average Index Over Time
+line_chart <- ggplot(data, aes(x = seq_along(AverageIndex), y = AverageIndex, color = Category)) +
+  geom_line() +
+  labs(title = "Line Chart of Average Residential Mobility Index Over Time",
+       x = "Year",
+       y = "Average Index",
+       color = "Category") +
+  theme_minimal() +
+  scale_color_manual(values = c("Low" = "blue", "Medium" = "green", "High" = "yellow"))
+
+# Print the chart
+print(line_chart)
+```
+
+```{r}
+# Histogram: Residential Mobility Index Categorized
+histogram_chart <- ggplot(data, aes(x = AverageIndex, fill = Category)) +
+  geom_histogram(binwidth = 0.1, position = "identity", alpha = 0.7) +
+  labs(title = "Histogram of Residential Mobility Index",
+       x = "Average Residential Mobility Index",
+       y = "Frequency",
+       fill = "Category") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Low" = "blue", "Medium" = "yellow", "High" = "red"))
+print(histogram_chart)
+```
+
+##Task4
+This line chart depicts the trends in the Average Residential Mobility Index for several regions over time, with different colours denoting the mobility categories. It provides a clear and straightforward picture of how regions' residential mobility has changed during the selected time period.
+This histogram visually depicts the Residential Mobility Index distribution, allowing for a better understanding of how the indices are spread throughout different categories. It delves into the frequency of regions falling into various mobility index ranges and emphasises the dataset's mobility category makeup.
+
+```{r}
+#install.packages("tinytex")
+#library(tinytex)
+#tinytex::install_tinytex()
+```
+
