@@ -65,7 +65,8 @@ SELECT people.Salesperson, people.spid, COUNT(sales.amount) AS total_shipments
 FROM `awesome chocolates`.people
 LEFT JOIN `awesome chocolates`.sales ON people.spid = sales.spid
 AND SaleDate >= '2022-01-01' AND SaleDate < '2022-01-08'
-WHERE sales.spid IS NULL;
+WHERE sales.spid IS NULL
+GROUP BY people.Salesperson, people.spid;
 
 ### Monthly High Volume Shipments
 SELECT DATE_FORMAT(SaleDate, '%Y-%m') AS shipment_month, COUNT(*) AS total_shipments_over_1000_boxes
