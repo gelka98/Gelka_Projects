@@ -90,7 +90,7 @@ FROM `awesome chocolates`.sales
 WHERE GeoID = 'G1' OR GeoID = 'G5'
 GROUP BY DATE_FORMAT(SaleDate, '%Y-%m'), country;
 
-### **Employee Data Management**
+### Employee Data Management
 -- Adding a new column
 ALTER TABLE employee
 ADD COLUMN Job_Designation VARCHAR(20) NOT NULL;
