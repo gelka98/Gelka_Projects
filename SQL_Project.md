@@ -26,7 +26,7 @@ This project involves comprehensive data analysis on the 'Awesome Chocolates' da
 SELECT * FROM `awesome chocolates`.sales
 where amount > 2000 and boxes < 100 ;
 
-**### Sales Performance**
+### Sales Performance
 SELECT people.salesperson , people.spid, Count(sales.Amount) as total_shipments from `awesome chocolates`.people
 left join `awesome chocolates`.sales
 on people.spid = sales.SPID and SaleDate >= '2022-01-01' and SaleDate < '2022-02-01'
@@ -128,3 +128,4 @@ WHEN 10 THEN 'Director'
 END;
 
 SET sql_safe_updates = 1;
+
